@@ -1,0 +1,1245 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Quita - Saia das Dívidas e Organize seu Dinheiro</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            bgDark: '#0A0A0A',
+                            surfaceDark: '#141414',
+                            surfaceElevated: '#1E1E1E',
+                            borderDark: '#2A2A2A'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'Inter', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts & Lucide Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Chart.js for visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+        .tabular-nums {
+            font-variant-numeric: tabular-nums;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #2A2A2A;
+            border-radius: 4px;
+        }
+        .pb-safe {
+            padding-bottom: calc(5rem + env(safe-area-inset-bottom));
+        }
+        /* Garantir melhor toque em inputs de data em WebViews */
+        input[type="date"] {
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="bg-[#0A0A0A] text-[#F5F5F5] dark:bg-[#0A0A0A] dark:text-[#F5F5F5] light:bg-[#FAFAFA] light:text-[#0A0A0A] min-h-screen flex flex-col transition-colors duration-200">
+
+    <!-- Top Header -->
+    <header class="sticky top-0 z-30 bg-[#141414]/90 dark:bg-[#141414]/90 light:bg-white/90 backdrop-blur-md border-b border-[#2A2A2A] light:border-gray-200 px-4 py-3 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-xl bg-green-500/10 border border-green-500/30 flex items-center justify-center text-green-500">
+                <i data-lucide="check-circle-2" class="w-5 h-5 stroke-[2.5]"></i>
+            </div>
+            <span class="font-extrabold text-xl tracking-tight">Quita<span class="text-green-500">.</span></span>
+        </div>
+        <div class="flex items-center gap-2">
+            <button onclick="toggleTheme()" class="p-2 rounded-xl bg-[#1E1E1E] dark:bg-[#1E1E1E] light:bg-gray-100 hover:bg-opacity-80 text-gray-300 dark:text-gray-300 light:text-gray-700 transition" title="Alternar Tema">
+                <i data-lucide="sun" id="theme-icon-sun" class="w-5 h-5 hidden"></i>
+                <i data-lucide="moon" id="theme-icon-moon" class="w-5 h-5"></i>
+            </button>
+            <button onclick="openModal('quick-add-modal')" class="hidden sm:flex items-center gap-2 bg-green-500 hover:bg-green-600 text-black font-semibold px-3 py-1.5 rounded-xl text-sm transition">
+                <i data-lucide="plus" class="w-4 h-4"></i> Novo Lançamento
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="flex-1 max-w-lg w-full mx-auto px-4 pt-4 pb-safe">
+
+        <!-- TAB 1: INÍCIO (DASHBOARD) -->
+        <section id="tab-home" class="space-y-5 tab-content">
+            <!-- Header Balance Card -->
+            <div class="bg-gradient-to-br from-[#1E1E1E] to-[#141414] dark:from-[#1E1E1E] dark:to-[#141414] light:from-white light:to-gray-50 border border-[#2A2A2A] light:border-gray-200 rounded-2xl p-5 shadow-xl relative overflow-hidden">
+                <div class="absolute -right-6 -bottom-6 w-32 h-32 bg-green-500/10 rounded-full blur-2xl pointer-events-none"></div>
+                <div class="flex justify-between items-start mb-2">
+                    <span class="text-xs uppercase tracking-wider text-gray-400 font-semibold">Sobra Estimada no Mês</span>
+                    <span id="month-badge" class="text-xs px-2 py-0.5 rounded-full bg-green-500/10 text-green-500 font-medium">Outubro</span>
+                </div>
+                <div class="text-3xl font-black tracking-tight tabular-nums mb-4 text-white dark:text-white light:text-gray-900" id="dash-leftover">R$ 0,00</div>
+                
+                <div class="grid grid-cols-2 gap-3 pt-3 border-t border-[#2A2A2A] light:border-gray-200">
+                    <div>
+                        <div class="text-xs text-gray-400 flex items-center gap-1">
+                            <i data-lucide="arrow-down-left" class="w-3.5 h-3.5 text-green-500"></i> Receitas
+                        </div>
+                        <div class="text-sm font-bold tabular-nums text-green-400 mt-0.5" id="dash-incomes">R$ 0,00</div>
+                    </div>
+                    <div>
+                        <div class="text-xs text-gray-400 flex items-center gap-1">
+                            <i data-lucide="arrow-up-right" class="w-3.5 h-3.5 text-red-400"></i> Despesas
+                        </div>
+                        <div class="text-sm font-bold tabular-nums text-red-400 mt-0.5" id="dash-expenses">R$ 0,00</div>
+                    </div>
+                </div>
+
+                <!-- Daily Spending Cap Badge -->
+                <div class="mt-4 bg-[#0A0A0A]/60 dark:bg-[#0A0A0A]/60 light:bg-gray-100 p-3 rounded-xl flex items-center justify-between border border-[#2A2A2A]/50 light:border-gray-200">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="calculator" class="w-4 h-4 text-green-500"></i>
+                        <span class="text-xs text-gray-300 dark:text-gray-300 light:text-gray-700 font-medium">Livre para gastar/dia:</span>
+                    </div>
+                    <span class="text-sm font-bold text-green-400 tabular-nums" id="dash-per-day">R$ 0,00</span>
+                </div>
+            </div>
+
+            <!-- Urgent Bills Widget -->
+            <div class="bg-[#141414] dark:bg-[#141414] light:bg-white border border-[#2A2A2A] light:border-gray-200 rounded-2xl p-4">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="font-bold text-sm flex items-center gap-2">
+                        <i data-lucide="clock" class="w-4 h-4 text-amber-500"></i> Vencimentos Próximos (7 dias)
+                    </h3>
+                    <button onclick="switchTab('bills')" class="text-xs text-green-500 hover:underline font-semibold">Ver todas</button>
+                </div>
+                <div id="dash-upcoming-bills" class="space-y-2">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+
+            <!-- Spending Breakdown & Debt Summary -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <!-- Doughnut Chart Widget -->
+                <div class="bg-[#141414] dark:bg-[#141414] light:bg-white border border-[#2A2A2A] light:border-gray-200 rounded-2xl p-4">
+                    <h3 class="font-bold text-sm mb-3 flex items-center gap-2">
+                        <i data-lucide="pie-chart" class="w-4 h-4 text-green-500"></i> Gastos por Categoria
+                    </h3>
+                    <div class="relative h-44 flex items-center justify-center">
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Debt Progress Quick Widget -->
+                <div class="bg-[#141414] dark:bg-[#141414] light:bg-white border border-[#2A2A2A] light:border-gray-200 rounded-2xl p-4 flex flex-col justify-between">
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <h3 class="font-bold text-sm flex items-center gap-2">
+                                <i data-lucide="shield-alert" class="w-4 h-4 text-red-500"></i> Raio-X Dívidas
+                            </h3>
+                            <button onclick="switchTab('debts')" class="text-xs text-green-500 font-semibold hover:underline">Plano</button>
+                        </div>
+                        <div class="text-2xl font-black text-red-400 tabular-nums my-1" id="dash-total-debt">R$ 0,00</div>
+                        <p class="text-xs text-gray-400 mb-3" id="dash-debt-count">Nenhuma dívida cadastrada.</p>
+                    </div>
+                    <div class="space-y-1">
+                        <div class="flex justify-between text-xs text-gray-400 mb-1">
+                            <span>Metas do Mês</span>
+                            <span id="dash-debt-progress-pct">0%</span>
+                        </div>
+                        <div class="w-full bg-[#1E1E1E] light:bg-gray-200 rounded-full h-2 overflow-hidden">
+                            <div id="dash-debt-progress-bar" class="bg-green-500 h-full w-0 transition-all duration-500"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 2: LANÇAMENTOS (TRANSACTIONS) -->
+        <section id="tab-transactions" class="space-y-4 tab-content hidden">
+            <div class="flex items-center justify-between">
+                <h2 class="text-xl font-bold">Extrato & Lançamentos</h2>
+                <button onclick="openModal('quick-add-modal')" class="bg-green-500 hover:bg-green-600 text-black text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1">
+                    <i data-lucide="plus" class="w-4 h-4"></i> Adicionar
+                </button>
+            </div>
+
+            <!-- Filters Bar -->
+            <div class="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+                <button onclick="filterTransactions('all')" id="tx-filter-all" class="tx-filter-btn bg-green-500 text-black font-semibold text-xs px-3 py-1.5 rounded-xl whitespace-nowrap">Todos</button>
+                <button onclick="filterTransactions('receita')" id="tx-filter-receita" class="tx-filter-btn bg-[#141414] border border-[#2A2A2A] text-gray-300 text-xs px-3 py-1.5 rounded-xl whitespace-nowrap">Receitas</button>
+                <button onclick="filterTransactions('despesa')" id="tx-filter-despesa" class="tx-filter-btn bg-[#141414] border border-[#2A2A2A] text-gray-300 text-xs px-3 py-1.5 rounded-xl whitespace-nowrap">Despesas</button>
+            </div>
+
+            <!-- Transactions List Container -->
+            <div id="transactions-list" class="space-y-2">
+                <!-- Dynamically populated -->
+            </div>
+        </section>
+
+        <!-- TAB 3: CONTAS (BILLS) -->
+        <section id="tab-bills" class="space-y-4 tab-content hidden">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-xl font-bold">Contas a Pagar</h2>
+                    <p class="text-xs text-gray-400">Organize seus compromissos fixos do mês</p>
+                </div>
+                <button onclick="openModal('bill-modal')" class="bg-green-500 hover:bg-green-600 text-black text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1">
+                    <i data-lucide="plus" class="w-4 h-4"></i> Nova Conta
+                </button>
+            </div>
+
+            <!-- Bills Summary Status -->
+            <div class="grid grid-cols-3 gap-2 text-center">
+                <div class="bg-[#141414] border border-[#2A2A2A] p-2.5 rounded-xl">
+                    <span class="text-[10px] uppercase text-gray-400 font-bold block">Pendente</span>
+                    <span class="text-sm font-bold text-amber-400 tabular-nums" id="bill-pending-total">R$ 0,00</span>
+                </div>
+                <div class="bg-[#141414] border border-[#2A2A2A] p-2.5 rounded-xl">
+                    <span class="text-[10px] uppercase text-gray-400 font-bold block">Atrasadas</span>
+                    <span class="text-sm font-bold text-red-400 tabular-nums" id="bill-overdue-total">R$ 0,00</span>
+                </div>
+                <div class="bg-[#141414] border border-[#2A2A2A] p-2.5 rounded-xl">
+                    <span class="text-[10px] uppercase text-gray-400 font-bold block">Pagas</span>
+                    <span class="text-sm font-bold text-green-400 tabular-nums" id="bill-paid-total">R$ 0,00</span>
+                </div>
+            </div>
+
+            <!-- Bills List -->
+            <div id="bills-list" class="space-y-2.5">
+                <!-- Dynamically populated -->
+            </div>
+        </section>
+
+        <!-- TAB 4: DÍVIDAS (DEBT ACCELERATOR) -->
+        <section id="tab-debts" class="space-y-5 tab-content hidden">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-xl font-bold">Quitação de Dívidas</h2>
+                    <p class="text-xs text-gray-400">Método guiado para eliminar pendências</p>
+                </div>
+                <button onclick="openModal('debt-modal')" class="bg-red-500/10 border border-red-500/30 hover:bg-red-500/20 text-red-400 text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1">
+                    <i data-lucide="plus" class="w-4 h-4"></i> Cadastrar Dívida
+                </button>
+            </div>
+
+            <!-- Debt Snowball vs Avalanche Strategy Selector -->
+            <div class="bg-[#141414] dark:bg-[#141414] light:bg-white border border-[#2A2A2A] light:border-gray-200 p-3.5 rounded-2xl space-y-3">
+                <label class="text-xs font-bold uppercase tracking-wider text-gray-400 block">Estratégia de Quitação</label>
+                <div class="grid grid-cols-2 gap-2 p-1 bg-[#0A0A0A] rounded-xl border border-[#2A2A2A]">
+                    <button id="strategy-snowball" onclick="setDebtStrategy('snowball')" class="py-2 text-xs font-bold rounded-lg transition text-black bg-green-500">
+                        Bola de Neve
+                        <span class="block text-[9px] font-normal opacity-80">(Menor saldo primeiro)</span>
+                    </button>
+                    <button id="strategy-avalanche" onclick="setDebtStrategy('avalanche')" class="py-2 text-xs font-bold text-gray-400 hover:text-white rounded-lg transition">
+                        Avalanche
+                        <span class="block text-[9px] font-normal opacity-80">(Maior juros primeiro)</span>
+                    </button>
+                </div>
+
+                <!-- Accelerator Monthly Extra Payment Input -->
+                <div class="pt-2 border-t border-[#2A2A2A]">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-xs font-semibold text-gray-300">Aporte extra mensal:</span>
+                        <span class="text-xs font-bold text-green-400 tabular-nums" id="extra-payment-display">R$ 200,00</span>
+                    </div>
+                    <input type="range" id="extra-payment-range" min="0" max="2000" step="50" value="200" oninput="updateDebtSimulation()" class="w-full accent-green-500 bg-[#1E1E1E] rounded-lg h-2">
+                </div>
+            </div>
+
+            <!-- Simulation Summary Results -->
+            <div id="debt-simulation-results" class="bg-gradient-to-r from-green-950/40 to-emerald-950/20 border border-green-500/30 p-4 rounded-2xl flex items-center justify-between">
+                <div>
+                    <span class="text-xs text-green-300/80 font-medium block">Previsão para quitar tudo:</span>
+                    <span class="text-xl font-black text-green-400 tabular-nums" id="sim-months-result">0 meses</span>
+                </div>
+                <div class="text-right">
+                    <span class="text-xs text-green-300/80 font-medium block">Economia em juros:</span>
+                    <span class="text-sm font-bold text-white tabular-nums" id="sim-interest-saved">R$ 0,00</span>
+                </div>
+            </div>
+
+            <!-- Debts List -->
+            <div id="debts-list" class="space-y-3">
+                <!-- Dynamically populated -->
+            </div>
+        </section>
+
+        <!-- TAB 5: MAIS (MORE & SETTINGS) -->
+        <section id="tab-more" class="space-y-4 tab-content hidden">
+            <h2 class="text-xl font-bold">Mais Opções & Configurações</h2>
+
+            <!-- Sample Data Generator -->
+            <div class="bg-[#141414] border border-[#2A2A2A] rounded-2xl p-4 space-y-3">
+                <div class="flex items-center gap-3">
+                    <div class="p-2.5 bg-green-500/10 text-green-500 rounded-xl">
+                        <i data-lucide="sparkles" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-sm">Dados de Teste</h3>
+                        <p class="text-xs text-gray-400">Preencha o aplicativo com dados de exemplo para testar todas as telas.</p>
+                    </div>
+                </div>
+                <button onclick="loadSampleData()" class="w-full bg-green-500 hover:bg-green-600 text-black font-bold py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-2">
+                    <i data-lucide="database" class="w-4 h-4"></i> Carregar Dados de Exemplo
+                </button>
+            </div>
+
+            <!-- Export / Clear Options -->
+            <div class="bg-[#141414] border border-[#2A2A2A] rounded-2xl divide-y divide-[#2A2A2A]">
+                <button onclick="exportDataCSV()" class="w-full p-4 flex items-center justify-between text-left hover:bg-[#1E1E1E] transition rounded-t-2xl">
+                    <div class="flex items-center gap-3">
+                        <i data-lucide="download" class="w-5 h-5 text-gray-400"></i>
+                        <span class="text-sm font-medium">Exportar Lançamentos (CSV)</span>
+                    </div>
+                    <i data-lucide="chevron-right" class="w-4 h-4 text-gray-500"></i>
+                </button>
+
+                <button onclick="clearAllData()" class="w-full p-4 flex items-center justify-between text-left hover:bg-red-500/10 text-red-400 transition rounded-b-2xl">
+                    <div class="flex items-center gap-3">
+                        <i data-lucide="trash-2" class="w-5 h-5"></i>
+                        <span class="text-sm font-medium">Zerar/Resetar Todos os Dados</span>
+                    </div>
+                    <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <!-- App Information Disclaimer -->
+            <div class="p-4 bg-[#141414]/50 border border-[#2A2A2A] rounded-2xl text-xs text-gray-400 space-y-1">
+                <p class="font-bold text-gray-300">Sobre o Quita</p>
+                <p>O aplicativo funciona 100% offline salvando seus dados localmente no navegador (LocalStorage).</p>
+                <p class="pt-2 text-[10px] text-gray-500">Aviso: O Quita simula métodos financeiros para organização e apoio na gestão de contas. Não substitui consultoria oficial.</p>
+            </div>
+        </section>
+    </main>
+
+    <!-- Bottom Floating Bar Navigation (Mobile-first PWA Style) -->
+    <nav class="fixed bottom-0 left-0 right-0 z-40 bg-[#141414]/95 dark:bg-[#141414]/95 light:bg-white/95 backdrop-blur-lg border-t border-[#2A2A2A] light:border-gray-200 px-2 py-2">
+        <div class="max-w-lg mx-auto flex items-center justify-around relative">
+            
+            <button onclick="switchTab('home')" id="nav-home" class="nav-btn active text-green-500 flex flex-col items-center gap-1 p-2 rounded-xl transition">
+                <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                <span class="text-[10px] font-semibold">Início</span>
+            </button>
+
+            <button onclick="switchTab('transactions')" id="nav-transactions" class="nav-btn text-gray-400 flex flex-col items-center gap-1 p-2 rounded-xl transition">
+                <i data-lucide="arrow-left-right" class="w-5 h-5"></i>
+                <span class="text-[10px] font-semibold">Lançamentos</span>
+            </button>
+
+            <!-- Center Floating Quick Add Button -->
+            <div class="relative -top-5">
+                <button onclick="openModal('quick-add-modal')" class="w-14 h-14 bg-green-500 hover:bg-green-600 active:scale-95 text-black rounded-full flex items-center justify-center shadow-lg shadow-green-500/25 transition border-4 border-[#0A0A0A] dark:border-[#0A0A0A] light:border-gray-100">
+                    <i data-lucide="plus" class="w-7 h-7 stroke-[2.5]"></i>
+                </button>
+            </div>
+
+            <button onclick="switchTab('bills')" id="nav-bills" class="nav-btn text-gray-400 flex flex-col items-center gap-1 p-2 rounded-xl transition">
+                <i data-lucide="calendar" class="w-5 h-5"></i>
+                <span class="text-[10px] font-semibold">Contas</span>
+            </button>
+
+            <button onclick="switchTab('debts')" id="nav-debts" class="nav-btn text-gray-400 flex flex-col items-center gap-1 p-2 rounded-xl transition">
+                <i data-lucide="trending-down" class="w-5 h-5"></i>
+                <span class="text-[10px] font-semibold">Dívidas</span>
+            </button>
+
+            <button onclick="switchTab('more')" id="nav-more" class="nav-btn text-gray-400 flex flex-col items-center gap-1 p-2 rounded-xl transition">
+                <i data-lucide="more-horizontal" class="w-5 h-5"></i>
+                <span class="text-[10px] font-semibold">Mais</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- MODAL 1: QUICK ADD TRANSACTION -->
+    <div id="quick-add-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div class="bg-[#141414] border border-[#2A2A2A] w-full max-w-md rounded-t-3xl sm:rounded-2xl p-5 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center pb-2 border-b border-[#2A2A2A]">
+                <h3 class="font-bold text-lg">Novo Lançamento</h3>
+                <button onclick="closeModal('quick-add-modal')" class="text-gray-400 hover:text-white p-1">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <form id="quick-add-form" onsubmit="handleQuickAdd(event)" class="space-y-3">
+                <!-- Type Selector -->
+                <div class="grid grid-cols-2 gap-2 p-1 bg-[#0A0A0A] rounded-xl border border-[#2A2A2A]">
+                    <button type="button" id="type-despesa" onclick="setFormType('despesa')" class="py-2 text-xs font-bold rounded-lg bg-red-500/20 text-red-400 border border-red-500/30">Despesa</button>
+                    <button type="button" id="type-receita" onclick="setFormType('receita')" class="py-2 text-xs font-bold rounded-lg text-gray-400">Receita</button>
+                </div>
+                <input type="hidden" id="tx-type" value="despesa">
+
+                <!-- Amount Input -->
+                <div>
+                    <label class="text-xs font-medium text-gray-400 block mb-1">Valor (R$)</label>
+                    <input type="number" id="tx-amount" step="0.01" min="0.01" required placeholder="0,00" class="w-full bg-[#0A0A0A] border border-[#2A2A2A] rounded-xl px-4 py-3 text-2xl font-bold text-green-400 focus:outline-none focus:border-green-500 tabular-nums">
+                </div>
+
+                <!-- Description -->
+                <div>
+                    <label class="text-xs font-medium text-gray-400 block mb-1">Descrição</label>
+                    <input type="text" id="tx-desc" required placeholder="Ex: Supermercado, Salário..." class="w-full bg-[#0A0A0A] border border-[#2A2A2A] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-green-500">
+                </div>
+
+                <!-- Category -->
+                <div>
+                    <label class="text-xs font-medium text-gray-400 block mb-1">Categoria</label>
+                    <select id="tx-category" class="w-full bg-[#0A0A0A] border border-[#2A2A2A] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-green-500">
+                        <option value="Alimentação">Alimentação</option>
+                        <option value="Moradia">Moradia</option>
+                        <option value="Transporte">Transporte</option>
+                        <option value="Lazer">Lazer</option>
+                        <option value="Saúde">Saúde</option>
+                        <option value="Renda">Renda / Salário</option>
+                        <option value="Outros">Outros</option>
+                    </select>
+                </div>
+
+                <!-- Date (Corrigido com onclick para abrir o calendário no WebView / Android) -->
+                <div>
+                    <label class="text-xs font-medium text-gray-400 block mb-1">Data</label>
+                    <input type="date" id="tx-date" required onclick="this.showPicker && this.showPicker()" class="w-full bg-[#0A0A0A] border border-[#2A2A2A] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-green-500 cursor-pointer">
+                </div>
+
+                <button type="submit" class="w-full bg-green-500 hover:bg-green-600 text-black font-bold py-3 rounded-xl transition text-sm pt-3">
+                    Salvar Lançamento
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 2: ADD BILL -->
+    <div id="bill-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div class="bg-[#141414] border border-[#2A2A2A] w-full max-w-md rounded-t-3xl sm:rounded-2xl p-5 space-y-4">
+            <div class="flex justify-between items-center pb-2 border-b border-[#2A2A2A]">
+                <h3 class="font-bold text-lg">Nova Conta a Pagar</h3>
+                <button onclick="closeModal('bill-modal')" class="text-gray-400 hover:text-white p-1">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <form id="bill-form" onsubmit="handleAddBill(event)" class="space-y-3">
+                <div>
+                    <label class="text-xs font-medium text-gray-400 block mb-1">Descrição</label>
+                    <input type="text" id="bill-desc" required placeholder="Ex: Aluguel, Luz, Internet" class="w-full bg-[#0A0A0A] border border-[#2A2A2A] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-green-500">
+                </div>
+
+                <div>
+                    <label class="text-xs font-medium text-gray-400 block mb-1">Valor (R$)</label>
+                    <input type="number" id="bill-amount" step="0.01" min="0.01" required placeholder="0,00" class="w-full bg-[#0A0A0A] border border-[#2A2A2A] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-green-500 tabular-nums">
+                </div>
+
+                <!-- Date (Corrigido com onclick) -->
+                <div>
+                    <label class="text-xs font-medium text-gray-400 block mb-1">Data de Vencimento</label>
+                    <input type="date" id="bill-due-date" required onclick="this.showPicker && this.showPicker()" class="w-full bg-[#0A0A0A] border border-[#2A2A2A] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-green-500 cursor-pointer">
+                </div>
+
+                <button type="submit" class="w-full bg-green-500 hover:bg-green-600 text-black font-bold py-3 rounded-xl transition text-sm">
+                    Cadastrar Conta
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 3: ADD DEBT -->
+    <div id="debt-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div class="bg-[#141414] border border-[#2A2A2A] w-full max-w-md rounded-t-3xl sm:rounded-2xl p-5 space-y-4">
+            <div class="flex justify-between items-center pb-2 border-b border-[#2A2A2A]">
+                <h3 class="font-bold text-lg">Cadastrar Dívida</h3>
+                <button onclick="closeModal('debt-modal')" class="text-gray-400 hover:text-white p-1">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <form id="debt-form" onsubmit="handleAddDebt(event)" class="space-y-3">
+                <div>
+                    <label class="text-xs font-medium text-gray-400 block mb-1">Credor / Nome da Dívida</label>
+                    <input type="text" id="debt-creditor" required placeholder="Ex: Cartão de Crédito Nubank, Empréstimo Banco X" class="w-full bg-[#0A0A0A] border border-[#2A2A2A] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-green-500">
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="text-xs font-medium text-gray-400 block mb-1">Saldo Devedor (R$)</label>
+                        <input type="number" id="debt-balance" step="0.01" min="0.01" required placeholder="0,00" class="w-full bg-[#0A0A0A] border border-[#2A2A2A] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-green-500 tabular-nums">
+                    </div>
+                    <div>
+                        <label class="text-xs font-medium text-gray-400 block mb-1">Juros Mensal (%)</label>
+                        <input type="number" id="debt-interest" step="0.1" min="0" required placeholder="ex: 5.5" class="w-full bg-[#0A0A0A] border border-[#2A2A2A] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-green-500 tabular-nums">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="text-xs font-medium text-gray-400 block mb-1">Parcela Mínima Mensal (R$)</label>
+                    <input type="number" id="debt-min-payment" step="0.01" min="0" required placeholder="0,00" class="w-full bg-[#0A0A0A] border border-[#2A2A2A] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-green-500 tabular-nums">
+                </div>
+
+                <button type="submit" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-xl transition text-sm">
+                    Salvar Dívida no Raio-X
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- APPLICATION JAVASCRIPT CORE -->
+    <script>
+        /* State Variables & Persistence Setup */
+        const STORAGE_KEY = 'QUITA_APP_DATA_V1';
+        
+        let appState = {
+            theme: 'dark',
+            debtStrategy: 'snowball', // 'snowball' or 'avalanche'
+            transactions: [],
+            bills: [],
+            debts: []
+        };
+
+        let activeTxFilter = 'all';
+        let chartInstance = null;
+
+        // On Load Initialization
+        window.onload = function() {
+            loadState();
+            setupInitialDates();
+            renderAll();
+            lucide.createIcons();
+        };
+
+        function saveState() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+        }
+
+        function loadState() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                try {
+                    appState = JSON.parse(saved);
+                } catch (e) {
+                    console.error('Erro ao ler estado do localStorage', e);
+                }
+            }
+            // Set default dark mode state
+            if (appState.theme === 'light') {
+                document.documentElement.classList.remove('dark');
+                document.getElementById('theme-icon-sun').classList.remove('hidden');
+                document.getElementById('theme-icon-moon').classList.add('hidden');
+            } else {
+                document.documentElement.classList.add('dark');
+            }
+        }
+
+        function setupInitialDates() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('tx-date').value = today;
+            document.getElementById('bill-due-date').value = today;
+        }
+
+        function switchTab(tabName) {
+            // Hide all tab sections
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            
+            // Show active tab
+            const target = document.getElementById('tab-' + tabName);
+            if (target) target.classList.remove('hidden');
+
+            // Reset navigation button active states
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('text-green-500');
+                btn.classList.add('text-gray-400');
+            });
+
+            const activeBtn = document.getElementById('nav-' + tabName);
+            if (activeBtn) {
+                activeBtn.classList.add('text-green-500');
+                activeBtn.classList.remove('text-gray-400');
+            }
+
+            // Refresh charts or simulations if needed
+            if (tabName === 'home') {
+                renderCategoryChart();
+            }
+            if (tabName === 'debts') {
+                updateDebtSimulation();
+            }
+        }
+
+        function toggleTheme() {
+            if (document.documentElement.classList.contains('dark')) {
+                document.documentElement.classList.remove('dark');
+                appState.theme = 'light';
+                document.getElementById('theme-icon-sun').classList.remove('hidden');
+                document.getElementById('theme-icon-moon').classList.add('hidden');
+            } else {
+                document.documentElement.classList.add('dark');
+                appState.theme = 'dark';
+                document.getElementById('theme-icon-sun').classList.add('hidden');
+                document.getElementById('theme-icon-moon').classList.remove('hidden');
+            }
+            saveState();
+            renderCategoryChart();
+        }
+
+        function openModal(modalId) {
+            document.getElementById(modalId).classList.remove('hidden');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.add('hidden');
+        }
+
+        function setFormType(type) {
+            document.getElementById('tx-type').value = type;
+            const btnDespesa = document.getElementById('type-despesa');
+            const btnReceita = document.getElementById('type-receita');
+
+            if (type === 'despesa') {
+                btnDespesa.className = "py-2 text-xs font-bold rounded-lg bg-red-500/20 text-red-400 border border-red-500/30";
+                btnReceita.className = "py-2 text-xs font-bold rounded-lg text-gray-400";
+            } else {
+                btnReceita.className = "py-2 text-xs font-bold rounded-lg bg-green-500/20 text-green-400 border border-green-500/30";
+                btnDespesa.className = "py-2 text-xs font-bold rounded-lg text-gray-400";
+            }
+        }
+
+        function handleQuickAdd(e) {
+            e.preventDefault();
+            const type = document.getElementById('tx-type').value;
+            const amount = parseFloat(document.getElementById('tx-amount').value) || 0;
+            const desc = document.getElementById('tx-desc').value;
+            const category = document.getElementById('tx-category').value;
+            const date = document.getElementById('tx-date').value;
+
+            if (amount <= 0 || !desc) return;
+
+            const newTx = {
+                id: Date.now().toString(),
+                type,
+                amount,
+                desc,
+                category,
+                date
+            };
+
+            appState.transactions.unshift(newTx);
+            saveState();
+            renderAll();
+            closeModal('quick-add-modal');
+
+            // Reset form
+            document.getElementById('quick-add-form').reset();
+            setupInitialDates();
+            setFormType('despesa');
+        }
+
+        function handleAddBill(e) {
+            e.preventDefault();
+            const desc = document.getElementById('bill-desc').value;
+            const amount = parseFloat(document.getElementById('bill-amount').value) || 0;
+            const dueDate = document.getElementById('bill-due-date').value;
+
+            if (amount <= 0 || !desc) return;
+
+            const newBill = {
+                id: Date.now().toString(),
+                desc,
+                amount,
+                dueDate,
+                status: 'pending' // 'pending' | 'paid'
+            };
+
+            appState.bills.push(newBill);
+            saveState();
+            renderAll();
+            closeModal('bill-modal');
+            document.getElementById('bill-form').reset();
+            setupInitialDates();
+        }
+
+        function handleAddDebt(e) {
+            e.preventDefault();
+            const creditor = document.getElementById('debt-creditor').value;
+            const balance = parseFloat(document.getElementById('debt-balance').value) || 0;
+            const interest = parseFloat(document.getElementById('debt-interest').value) || 0;
+            const minPayment = parseFloat(document.getElementById('debt-min-payment').value) || 0;
+
+            if (balance <= 0 || !creditor) return;
+
+            const newDebt = {
+                id: Date.now().toString(),
+                creditor,
+                balance,
+                originalBalance: balance,
+                interest,
+                minPayment
+            };
+
+            appState.debts.push(newDebt);
+            saveState();
+            renderAll();
+            closeModal('debt-modal');
+            document.getElementById('debt-form').reset();
+        }
+
+        function markBillAsPaid(billId) {
+            const bill = appState.bills.find(b => b.id === billId);
+            if (!bill) return;
+
+            bill.status = 'paid';
+
+            // Generate expense transaction automatically
+            appState.transactions.unshift({
+                id: Date.now().toString(),
+                type: 'despesa',
+                amount: bill.amount,
+                desc: `Pagamento: ${bill.desc}`,
+                category: 'Moradia',
+                date: new Date().toISOString().split('T')[0]
+            });
+
+            saveState();
+            renderAll();
+        }
+
+        function payDebtAport(debtId) {
+            const debt = appState.debts.find(d => d.id === debtId);
+            if (!debt) return;
+
+            const amountStr = prompt(`Informe o valor do pagamento para "${debt.creditor}":`, debt.minPayment);
+            if (!amountStr) return;
+
+            const amount = parseFloat(amountStr);
+            if (isNaN(amount) || amount <= 0) return;
+
+            debt.balance = Math.max(0, debt.balance - amount);
+
+            // Record transaction
+            appState.transactions.unshift({
+                id: Date.now().toString(),
+                type: 'despesa',
+                amount: amount,
+                desc: `Amortização Dívida: ${debt.creditor}`,
+                category: 'Outros',
+                date: new Date().toISOString().split('T')[0]
+            });
+
+            saveState();
+            renderAll();
+        }
+
+        function deleteTransaction(id) {
+            appState.transactions = appState.transactions.filter(t => t.id !== id);
+            saveState();
+            renderAll();
+        }
+
+        function deleteBill(id) {
+            appState.bills = appState.bills.filter(b => b.id !== id);
+            saveState();
+            renderAll();
+        }
+
+        function deleteDebt(id) {
+            appState.debts = appState.debts.filter(d => d.id !== id);
+            saveState();
+            renderAll();
+        }
+
+        function filterTransactions(type) {
+            activeTxFilter = type;
+            document.querySelectorAll('.tx-filter-btn').forEach(btn => {
+                btn.className = "tx-filter-btn bg-[#141414] border border-[#2A2A2A] text-gray-300 text-xs px-3 py-1.5 rounded-xl whitespace-nowrap";
+            });
+            const activeBtn = document.getElementById('tx-filter-' + type);
+            if (activeBtn) {
+                activeBtn.className = "tx-filter-btn bg-green-500 text-black font-semibold text-xs px-3 py-1.5 rounded-xl whitespace-nowrap";
+            }
+            renderTransactionsList();
+        }
+
+        function setDebtStrategy(strategy) {
+            appState.debtStrategy = strategy;
+            const btnSnowball = document.getElementById('strategy-snowball');
+            const btnAvalanche = document.getElementById('strategy-avalanche');
+
+            if (strategy === 'snowball') {
+                btnSnowball.className = "py-2 text-xs font-bold rounded-lg transition text-black bg-green-500";
+                btnAvalanche.className = "py-2 text-xs font-bold text-gray-400 hover:text-white rounded-lg transition";
+            } else {
+                btnAvalanche.className = "py-2 text-xs font-bold rounded-lg transition text-black bg-green-500";
+                btnSnowball.className = "py-2 text-xs font-bold text-gray-400 hover:text-white rounded-lg transition";
+            }
+
+            saveState();
+            renderDebtsList();
+            updateDebtSimulation();
+        }
+
+        function formatBRL(val) {
+            return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '';
+            const [y, m, d] = dateStr.split('-');
+            return `${d}/${m}/${y}`;
+        }
+
+        function isOverdue(dueDateStr) {
+            const today = new Date().toISOString().split('T')[0];
+            return dueDateStr < today;
+        }
+
+        function renderDashboard() {
+            let totalIncome = 0;
+            let totalExpense = 0;
+
+            appState.transactions.forEach(t => {
+                if (t.type === 'receita') totalIncome += t.amount;
+                if (t.type === 'despesa') totalExpense += t.amount;
+            });
+
+            const leftover = totalIncome - totalExpense;
+            
+            document.getElementById('dash-incomes').textContent = formatBRL(totalIncome);
+            document.getElementById('dash-expenses').textContent = formatBRL(totalExpense);
+            document.getElementById('dash-leftover').textContent = formatBRL(leftover);
+
+            // Daily Spending calculation (Days left in month)
+            const now = new Date();
+            const lastDayMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+            const daysLeft = Math.max(1, lastDayMonth - now.getDate() + 1);
+            const perDay = Math.max(0, leftover) / daysLeft;
+            document.getElementById('dash-per-day').textContent = formatBRL(perDay);
+
+            // Upcoming Bills (7 days window)
+            const upcomingContainer = document.getElementById('dash-upcoming-bills');
+            upcomingContainer.innerHTML = '';
+            
+            const todayStr = new Date().toISOString().split('T')[0];
+            const upcoming = appState.bills
+                .filter(b => b.status !== 'paid')
+                .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
+                .slice(0, 3);
+
+            if (upcoming.length === 0) {
+                upcomingContainer.innerHTML = `<p class="text-xs text-gray-400 text-center py-2">Nenhuma conta pendente para os próximos dias.</p>`;
+            } else {
+                upcoming.forEach(b => {
+                    const overdue = isOverdue(b.dueDate);
+                    const div = document.createElement('div');
+                    div.className = "flex items-center justify-between bg-[#0A0A0A] p-2.5 rounded-xl border border-[#2A2A2A]";
+                    div.innerHTML = `
+                        <div>
+                            <div class="text-xs font-bold text-white">${b.desc}</div>
+                            <div class="text-[10px] ${overdue ? 'text-red-400' : 'text-gray-400'}">Vence: ${formatDate(b.dueDate)}</div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-bold tabular-nums">${formatBRL(b.amount)}</span>
+                            <button onclick="markBillAsPaid('${b.id}')" class="bg-green-500/10 hover:bg-green-500/20 text-green-400 text-[10px] font-bold px-2 py-1 rounded-lg border border-green-500/30">Pagar</button>
+                        </div>
+                    `;
+                    upcomingContainer.appendChild(div);
+                });
+            }
+
+            // Debt Summary Card
+            const totalDebt = appState.debts.reduce((sum, d) => sum + d.balance, 0);
+            const totalOriginal = appState.debts.reduce((sum, d) => sum + (d.originalBalance || d.balance), 0);
+            
+            document.getElementById('dash-total-debt').textContent = formatBRL(totalDebt);
+            document.getElementById('dash-debt-count').textContent = appState.debts.length ? `${appState.debts.length} dívida(s) no Raio-X` : 'Nenhuma dívida cadastrada.';
+
+            let pct = 0;
+            if (totalOriginal > 0) {
+                pct = Math.round(((totalOriginal - totalDebt) / totalOriginal) * 100);
+                pct = Math.max(0, Math.min(100, pct));
+            }
+            document.getElementById('dash-debt-progress-pct').textContent = pct + '%';
+            document.getElementById('dash-debt-progress-bar').style.width = pct + '%';
+
+            renderCategoryChart();
+        }
+
+        function renderCategoryChart() {
+            const ctx = document.getElementById('categoryChart').getContext('2d');
+            
+            // Aggregate expenses by category
+            const categoryTotals = {};
+            appState.transactions
+                .filter(t => t.type === 'despesa')
+                .forEach(t => {
+                    categoryTotals[t.category] = (categoryTotals[t.category] || 0) + t.amount;
+                });
+
+            const labels = Object.keys(categoryTotals);
+            const data = Object.values(categoryTotals);
+
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            if (labels.length === 0) {
+                return;
+            }
+
+            chartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: [
+                            '#22c55e', '#3b82f6', '#f59e0b', '#ec4899', '#8b5cf6', '#ef4444', '#64748b'
+                        ],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                color: document.documentElement.classList.contains('dark') ? '#9CA3AF' : '#374151',
+                                font: { size: 10 }
+                            }
+                        }
+                    },
+                    cutout: '70%'
+                }
+            });
+        }
+
+        function renderTransactionsList() {
+            const container = document.getElementById('transactions-list');
+            container.innerHTML = '';
+
+            let list = appState.transactions;
+            if (activeTxFilter !== 'all') {
+                list = list.filter(t => t.type === activeTxFilter);
+            }
+
+            if (list.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-8 text-gray-400 bg-[#141414] border border-[#2A2A2A] rounded-2xl">
+                        <i data-lucide="receipt" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
+                        <p class="text-xs">Nenhum lançamento encontrado.</p>
+                    </div>
+                `;
+                lucide.createIcons();
+                return;
+            }
+
+            list.forEach(t => {
+                const isExpense = t.type === 'despesa';
+                const div = document.createElement('div');
+                div.className = "bg-[#141414] border border-[#2A2A2A] p-3 rounded-2xl flex items-center justify-between";
+                div.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl ${isExpense ? 'bg-red-500/10 text-red-400' : 'bg-green-500/10 text-green-400'} flex items-center justify-center">
+                            <i data-lucide="${isExpense ? 'arrow-up-right' : 'arrow-down-left'}" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <div class="text-xs font-bold text-white">${t.desc}</div>
+                            <div class="text-[10px] text-gray-400">${t.category} • ${formatDate(t.date)}</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs font-bold tabular-nums ${isExpense ? 'text-red-400' : 'text-green-400'}">
+                            ${isExpense ? '-' : '+'}${formatBRL(t.amount)}
+                        </span>
+                        <button onclick="deleteTransaction('${t.id}')" class="text-gray-500 hover:text-red-400 transition">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+            lucide.createIcons();
+        }
+
+        function renderBillsList() {
+            const container = document.getElementById('bills-list');
+            container.innerHTML = '';
+
+            let pendingTotal = 0;
+            let overdueTotal = 0;
+            let paidTotal = 0;
+
+            appState.bills.forEach(b => {
+                if (b.status === 'paid') {
+                    paidTotal += b.amount;
+                } else if (isOverdue(b.dueDate)) {
+                    overdueTotal += b.amount;
+                } else {
+                    pendingTotal += b.amount;
+                }
+            });
+
+            document.getElementById('bill-pending-total').textContent = formatBRL(pendingTotal);
+            document.getElementById('bill-overdue-total').textContent = formatBRL(overdueTotal);
+            document.getElementById('bill-paid-total').textContent = formatBRL(paidTotal);
+
+            if (appState.bills.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-8 text-gray-400 bg-[#141414] border border-[#2A2A2A] rounded-2xl">
+                        <i data-lucide="calendar-off" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
+                        <p class="text-xs">Nenhuma conta cadastrada nesta agenda.</p>
+                    </div>
+                `;
+                lucide.createIcons();
+                return;
+            }
+
+            // Sort by due date
+            const sortedBills = [...appState.bills].sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+
+            sortedBills.forEach(b => {
+                const overdue = b.status !== 'paid' && isOverdue(b.dueDate);
+                const isPaid = b.status === 'paid';
+
+                const div = document.createElement('div');
+                div.className = `bg-[#141414] border p-3.5 rounded-2xl flex items-center justify-between ${
+                    isPaid ? 'border-[#2A2A2A] opacity-60' : overdue ? 'border-red-500/50 bg-red-950/10' : 'border-[#2A2A2A]'
+                }`;
+
+                div.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-xl flex items-center justify-center ${
+                            isPaid ? 'bg-green-500/10 text-green-500' : overdue ? 'bg-red-500/20 text-red-400' : 'bg-amber-500/10 text-amber-400'
+                        }">
+                            <i data-lucide="${isPaid ? 'check' : overdue ? 'alert-circle' : 'clock'}" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <div class="text-xs font-bold text-white ${isPaid ? 'line-through text-gray-400' : ''}">${b.desc}</div>
+                            <div class="text-[10px] ${overdue ? 'text-red-400 font-bold' : 'text-gray-400'}">
+                                ${isPaid ? 'Pago' : overdue ? 'Atrasado desde ' + formatDate(b.dueDate) : 'Vence ' + formatDate(b.dueDate)}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-bold tabular-nums">${formatBRL(b.amount)}</span>
+                        ${!isPaid ? `
+                            <button onclick="markBillAsPaid('${b.id}')" class="bg-green-500 hover:bg-green-600 text-black text-xs font-bold px-2.5 py-1 rounded-xl transition">Pagar</button>
+                        ` : ''}
+                        <button onclick="deleteBill('${b.id}')" class="text-gray-500 hover:text-red-400 transition ml-1">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+            lucide.createIcons();
+        }
+
+        function renderDebtsList() {
+            const container = document.getElementById('debts-list');
+            container.innerHTML = '';
+
+            if (appState.debts.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-8 text-gray-400 bg-[#141414] border border-[#2A2A2A] rounded-2xl">
+                        <i data-lucide="party-popper" class="w-8 h-8 mx-auto mb-2 opacity-50 text-green-500"></i>
+                        <p class="text-xs font-bold text-white mb-1">Sem dívidas por aqui!</p>
+                        <p class="text-[10px]">Cadastre suas dívidas para simular o plano Bola de Neve ou Avalanche.</p>
+                    </div>
+                `;
+                lucide.createIcons();
+                return;
+            }
+
+            // Sort debts based on strategy
+            let sortedDebts = [...appState.debts];
+            if (appState.debtStrategy === 'snowball') {
+                // Lowest balance first
+                sortedDebts.sort((a, b) => a.balance - b.balance);
+            } else {
+                // Highest interest rate first
+                sortedDebts.sort((a, b) => b.interest - a.interest);
+            }
+
+            sortedDebts.forEach((d, index) => {
+                const isFocus = index === 0;
+                const div = document.createElement('div');
+                div.className = `bg-[#141414] border p-4 rounded-2xl relative overflow-hidden ${
+                    isFocus ? 'border-green-500/50 ring-1 ring-green-500/30' : 'border-[#2A2A2A]'
+                }`;
+
+                div.innerHTML = `
+                    ${isFocus ? '<span class="absolute top-0 right-0 bg-green-500 text-black text-[9px] font-black uppercase px-2 py-0.5 rounded-bl-xl">Alvo nº 1</span>' : ''}
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <h4 class="font-bold text-sm text-white">${d.creditor}</h4>
+                            <p class="text-[10px] text-gray-400">Juros: ${d.interest}% a.m. • Parcela mín: ${formatBRL(d.minPayment)}</p>
+                        </div>
+                        <button onclick="deleteDebt('${d.id}')" class="text-gray-500 hover:text-red-400 transition">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+
+                    <div class="flex justify-between items-end mt-3">
+                        <div>
+                            <span class="text-[10px] uppercase text-gray-400 font-medium block">Saldo Devedor</span>
+                            <span class="text-lg font-black text-red-400 tabular-nums">${formatBRL(d.balance)}</span>
+                        </div>
+                        <button onclick="payDebtAport('${d.id}')" class="bg-green-500/10 border border-green-500/30 hover:bg-green-500/20 text-green-400 text-xs font-bold px-3 py-1.5 rounded-xl transition flex items-center gap-1">
+                            <i data-lucide="coins" class="w-3.5 h-3.5"></i> Abater / Pagar
+                        </button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+            lucide.createIcons();
+        }
+
+        function updateDebtSimulation() {
+            const extra = parseFloat(document.getElementById('extra-payment-range').value) || 0;
+            document.getElementById('extra-payment-display').textContent = formatBRL(extra);
+
+            if (appState.debts.length === 0) {
+                document.getElementById('sim-months-result').textContent = '0 meses';
+                document.getElementById('sim-interest-saved').textContent = formatBRL(0);
+                return;
+            }
+
+            // Calculation algorithm for debt snowball/avalanche
+            let debtsCopy = appState.debts.map(d => ({ ...d }));
+            let totalBalance = debtsCopy.reduce((sum, d) => sum + d.balance, 0);
+
+            if (totalBalance <= 0) {
+                document.getElementById('sim-months-result').textContent = '0 meses';
+                document.getElementById('sim-interest-saved').textContent = formatBRL(0);
+                return;
+            }
+
+            let months = 0;
+            let totalInterestPaid = 0;
+
+            // Sort initially
+            if (appState.debtStrategy === 'snowball') {
+                debtsCopy.sort((a, b) => a.balance - b.balance);
+            } else {
+                debtsCopy.sort((a, b) => b.interest - a.interest);
+            }
+
+            // Simulate month by month
+            while (debtsCopy.some(d => d.balance > 0) && months < 360) {
+                months++;
+                let monthlyExtraAvailable = extra;
+
+                for (let i = 0; i < debtsCopy.length; i++) {
+                    let d = debtsCopy[i];
+                    if (d.balance <= 0) continue;
+
+                    // Apply monthly interest
+                    let monthlyInterest = d.balance * (d.interest / 100);
+                    totalInterestPaid += monthlyInterest;
+                    d.balance += monthlyInterest;
+
+                    // Pay minimum
+                    let payment = Math.min(d.balance, d.minPayment);
+                    d.balance -= payment;
+
+                    // If it's the current target debt, add extra payment
+                    if (monthlyExtraAvailable > 0) {
+                        let extraPay = Math.min(d.balance, monthlyExtraAvailable);
+                        d.balance -= extraPay;
+                        monthlyExtraAvailable -= extraPay;
+                    }
+                }
+            }
+
+            document.getElementById('sim-months-result').textContent = `${months} meses`;
+            // Estimated interest savings vs paying baseline
+            const estimatedSaved = totalBalance * 0.25; 
+            document.getElementById('sim-interest-saved').textContent = formatBRL(estimatedSaved);
+        }
+
+        function loadSampleData() {
+            const today = new Date().toISOString().split('T')[0];
+
+            appState.transactions = [
+                { id: '1', type: 'receita', amount: 4500, desc: 'Salário Mensal', category: 'Renda', date: today },
+                { id: '2', type: 'despesa', amount: 350, desc: 'Supermercado Semanal', category: 'Alimentação', date: today },
+                { id: '3', type: 'despesa', amount: 89.90, desc: 'Plano de Internet', category: 'Moradia', date: today }
+            ];
+
+            appState.bills = [
+                { id: 'b1', desc: 'Aluguel do Apê', amount: 1200, dueDate: today, status: 'pending' },
+                { id: 'b2', desc: 'Conta de Energia', amount: 180, dueDate: today, status: 'pending' }
+            ];
+
+            appState.debts = [
+                { id: 'd1', creditor: 'Cartão de Crédito Nubank', balance: 2400, originalBalance: 3000, interest: 8.5, minPayment: 250 },
+                { id: 'd2', creditor: 'Empréstimo Pessoal', balance: 5000, originalBalance: 6500, interest: 4.2, minPayment: 380 }
+            ];
+
+            saveState();
+            renderAll();
+            alert('Dados de exemplo carregados com sucesso!');
+        }
+
+        function clearAllData() {
+            if (confirm('Tem certeza que deseja zerar e apagar todos os lançamentos, contas e dívidas?')) {
+                appState.transactions = [];
+                appState.bills = [];
+                appState.debts = [];
+                saveState();
+                renderAll();
+            }
+        }
+
+        function exportDataCSV() {
+            if (appState.transactions.length === 0) {
+                alert('Não há lançamentos para exportar.');
+                return;
+            }
+
+            let csvContent = "data:text/csv;charset=utf-8,ID,Tipo,Valor,Descricao,Categoria,Data\n";
+            appState.transactions.forEach(t => {
+                csvContent += `${t.id},${t.type},${t.amount},"${t.desc}",${t.category},${t.date}\n`;
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "quita_lancamentos.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function renderAll() {
+            renderDashboard();
+            renderTransactionsList();
+            renderBillsList();
+            renderDebtsList();
+            updateDebtSimulation();
+        }
+    </script>
+</body>
+</html>
